@@ -4,8 +4,16 @@
       <div class="controls-panel">
         <h1>GreenTensorCAD</h1>
 
+        <MaterialLibrary
+            :materials="materialLibrary"
+            @add-material="addCustomMaterial"
+            @delete-material="deleteCustomMaterial"
+            @update-material="updateCustomMaterial"
+        />
+
         <LayerControls
             :layers="layers"
+            :materials="materialLibrary"
             @add-layer="addLayer"
             @remove-layer="removeLayer"
             @update-layer="updateLayer"
@@ -33,23 +41,54 @@
 import LayerControls from './components/LayerControls.vue'
 import SliceControls from './components/SliceControls.vue'
 import JscadViewer from './components/JscadViewer.vue'
+import MaterialLibrary from './components/MaterialLibrary.vue'
+import { materialLibrary } from './assets/materials.js'
 
 export default {
   name: 'App',
   components: {
     LayerControls,
     SliceControls,
-    JscadViewer
+    JscadViewer,
+    MaterialLibrary
   },
   data() {
     return {
       layers: [
-        { id: 1, outerRadius: 8, thickness: 5, color: [0, 0, 1], visible: true },
-        { id: 2, outerRadius: 10, thickness: 5, color: [0, 1, 0], visible: true },
-        { id: 3, outerRadius: 12, thickness: 5, color: [1, 0, 0], visible: true }
+        { 
+          id: 1, 
+          outerRadius: 8, 
+          thickness: 5, 
+          color: materialLibrary[0].color,
+          magneticPermeability: materialLibrary[0].magneticPermeability,
+          dielectricConstant: materialLibrary[0].dielectricConstant,
+          materialId: 1,
+          visible: true 
+        },
+        { 
+          id: 2, 
+          outerRadius: 10, 
+          thickness: 5, 
+          color: materialLibrary[1].color,
+          magneticPermeability: materialLibrary[1].magneticPermeability,
+          dielectricConstant: materialLibrary[1].dielectricConstant,
+          materialId: 2,
+          visible: true 
+        },
+        { 
+          id: 3, 
+          outerRadius: 12, 
+          thickness: 5, 
+          color: materialLibrary[2].color,
+          magneticPermeability: materialLibrary[2].magneticPermeability,
+          dielectricConstant: materialLibrary[2].dielectricConstant,
+          materialId: 3,
+          visible: true 
+        }
       ],
       slicePosition: 180,
-      sliceEnabled: true
+      sliceEnabled: true,
+      materialLibrary: [...materialLibrary]
     }
   },
   methods: {
@@ -64,6 +103,9 @@ export default {
         outerRadius: newOuterRadius,
         thickness: 2,
         color: [Math.random(), Math.random(), Math.random()],
+        magneticPermeability: 1.0,
+        dielectricConstant: 1.0,
+        materialId: null,
         visible: true
       })
 
@@ -103,6 +145,48 @@ export default {
     updateSlice({ position, enabled }) {
       this.slicePosition = position;
       this.sliceEnabled = enabled;
+    },
+
+    addCustomMaterial(material) {
+      const newId = Math.max(...this.materialLibrary.map(m => m.id), 0) + 1
+      this.materialLibrary.push({
+        ...material,
+        id: newId
+      })
+    },
+
+    updateCustomMaterial(updatedMaterial) {
+      const index = this.materialLibrary.findIndex(m => m.id === updatedMaterial.id)
+      if (index !== -1) {
+        this.materialLibrary[index] = { ...updatedMaterial }
+        
+        this.layers.forEach(layer => {
+          if (layer.materialId === updatedMaterial.id) {
+            layer.color = [...updatedMaterial.color]
+            layer.magneticPermeability = updatedMaterial.magneticPermeability
+            layer.dielectricConstant = updatedMaterial.dielectricConstant
+          }
+        })
+      }
+    },
+
+    deleteCustomMaterial(materialId) {
+      this.materialLibrary = this.materialLibrary.filter(m => m.id !== materialId)
+      
+      this.layers.forEach(layer => {
+        if (layer.materialId === materialId) {
+          layer.materialId = null
+        }
+      })
+    },
+
+    applyMaterialToAllLayers(material) {
+      this.layers.forEach(layer => {
+        layer.color = [...material.color]
+        layer.magneticPermeability = material.magneticPermeability
+        layer.dielectricConstant = material.dielectricConstant
+        layer.materialId = material.id
+      })
     }
   },
 

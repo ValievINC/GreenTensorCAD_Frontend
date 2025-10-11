@@ -1,79 +1,390 @@
+/* common-styles.css */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Цветовая палитра */
+  --primary-color: #007bff;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --secondary-color: #6c757d;
+  
+  /* Текст */
+  --text-primary: #2c3e50;
+  --text-secondary: #495057;
+  --text-muted: #6c757d;
+  
+  /* Фоны */
+  --bg-white: #ffffff;
+  --bg-light: #f8f9fa;
+  --bg-lighter: #f8f9fa;
+  
+  /* Границы */
+  --border-color: #e0e0e0;
+  --border-light: #e9ecef;
+  --border-input: #ced4da;
+  
+  /* Тени */
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.3);
+  
+  /* Скругления */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  
+  /* Анимации */
+  --transition: all 0.2s ease;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* Общие стили компонентов */
+.component-section {
+  margin-bottom: 30px;
 }
 
-body {
-  margin: 0;
+.section-header {
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.section-header h2 {
+  color: var(--text-primary);
+  font-size: 18px;
+  margin: 0;
+  font-weight: 600;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+/* Кнопки */
+.btn {
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  font-size: 14px;
+  font-weight: 500;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #0056b3;
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background: var(--success-color);
+  color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: var(--danger-color);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+.btn-warning {
+  background: var(--warning-color);
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  background: #e0a800;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--secondary-color);
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+/* Иконные кнопки */
+.btn-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.btn-icon-sm {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+}
+
+.btn-icon-lg {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+
+/* Формы */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.form-input, .form-textarea, .form-select {
+  padding: 10px 12px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  transition: var(--transition);
+  background: var(--bg-white);
+  color: var(--text-primary);
+}
+
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.form-input:hover, .form-textarea:hover, .form-select:hover {
+  border-color: #adb5bd;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+/* Чекбоксы */
+.checkbox-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--primary-color);
+  cursor: pointer;
+}
+
+/* Цветовой input */
+.color-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-picker {
+  width: 50px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  padding: 3px;
+  background: var(--bg-white);
+  border: 1px solid var(--border-input);
+}
+
+.color-value {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+/* Select */
+.select-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.select-wrapper::after {
+  content: '▼';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.form-select {
+  appearance: none;
+  width: 100%;
+  cursor: pointer;
+  padding-right: 35px;
+}
+
+/* Сетка */
+.grid-2cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.grid-full-width {
+  grid-column: 1 / -1;
+}
+
+/* Карточки */
 .card {
-  padding: 2em;
+  background: var(--bg-white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 15px;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Модальное окно */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--bg-white);
+  padding: 0;
+  border-radius: var(--radius-xl);
+  width: 500px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 20px 0 20px;
+  margin-bottom: 20px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 20px;
+  background: var(--bg-light);
+  margin-top: 20px;
+  border-top: 1px solid var(--border-light);
+}
+
+/* Scroll контейнер */
+.scroll-container {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 500px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  background: var(--bg-lighter);
+  padding: 10px;
+}
+
+.scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .section-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
   }
-  a:hover {
-    color: #747bff;
+  
+  .grid-2cols {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
-  button {
-    background-color: #f9f9f9;
+  
+  .modal-content {
+    width: 95vw;
+    margin: 10px;
+  }
+  
+  .scroll-container {
+    max-height: 400px;
   }
 }
