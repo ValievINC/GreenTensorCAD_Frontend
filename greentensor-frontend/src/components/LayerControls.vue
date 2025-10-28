@@ -30,17 +30,22 @@
               <span class="form-label">Видимость</span>
             </label>
 
+            <!-- Нормированный радиус -->
             <label class="form-group">
-              <span class="form-label">{{ index === 0 ? 'Радиус (мм):' : 'Толщина (мм):' }}</span>
+              <span class="form-label">Нормированный радиус:</span>
               <input
                   type="number"
-                  v-model.number="layer.thickness"
-                  min="0.1"
-                  max="1000"
-                  step="0.1"
-                  @input="updateLayerWithValidation(layer, $event, 'thickness')"
+                  v-model.number="layer.normalizedRadius"
+                  min="0.01"
+                  max="10"
+                  step="0.01"
+                  @input="updateLayerWithValidation(layer, $event, 'normalizedRadius')"
                   class="form-input"
               >
+              <div class="form-hint">
+                Физ. радиус: {{ calculatePhysicalRadius(layer).toFixed(3) }} мм
+                ({{ (layer.normalizedRadius * 100).toFixed(1) }}% от линзы)
+              </div>
             </label>
 
             <div class="form-group grid-full-width">
@@ -132,6 +137,10 @@ export default {
     materials: {
       type: Array,
       required: true
+    },
+    lensRadiusCoeff: {
+      type: Number,
+      required: true
     }
   },
   computed: {
@@ -143,6 +152,11 @@ export default {
     }
   },
   methods: {
+    calculatePhysicalRadius(layer) {
+      const k0 = this.lensRadiusCoeff * Math.PI
+      return layer.normalizedRadius * k0
+    },
+
     getSelectedMaterial(materialId) {
       const id = Number(materialId);
       return this.materials.find(m => m.id === id);

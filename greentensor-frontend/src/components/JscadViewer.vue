@@ -233,16 +233,15 @@ export default {
       })
       meshes.length = 0
 
-      const layersWithRadii = props.layers.map((layer, index) => {
-        let outerRadius = 0
-        for (let i = 0; i <= index; i++) {
-          outerRadius += props.layers[i].thickness || 1
-        }
-        return {
-          ...layer,
-          outerRadius: outerRadius
-        }
-      })
+      const layersWithRadii = props.layers
+        .filter(layer => layer.visible)
+        .sort((a, b) => a.normalizedRadius - b.normalizedRadius)
+        .map(layer => {
+          return {
+            ...layer,
+            outerRadius: layer.physicalRadius * 2 // Масштабируем для визуализации
+          }
+        })
 
       const allLayers = [...layersWithRadii].sort((a, b) => a.outerRadius - b.outerRadius)
 

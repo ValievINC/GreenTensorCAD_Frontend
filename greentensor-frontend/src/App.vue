@@ -4,6 +4,11 @@
       <div class="controls-panel">
         <h1>GreenTensorCAD</h1>
 
+        <GlobalSettings
+            :lensRadiusCoeff="lensRadiusCoeff"
+            @update-lens-radius="updateLensRadius"
+        />
+
         <MaterialLibrary
             :materials="materialLibrary"
             @add-material="addCustomMaterial"
@@ -14,6 +19,7 @@
         <LayerControls
             :layers="layers"
             :materials="materialLibrary"
+            :lensRadiusCoeff="lensRadiusCoeff"
             @add-layer="addLayer"
             @remove-layer="removeLayer"
             @update-layer="updateLayer"
@@ -31,6 +37,7 @@
             :layers="layers"
             :slicePosition="slicePosition"
             :sliceEnabled="sliceEnabled"
+            :lensRadiusCoeff="lensRadiusCoeff"
         />
       </div>
     </div>
@@ -42,6 +49,7 @@ import LayerControls from './components/LayerControls.vue'
 import SliceControls from './components/SliceControls.vue'
 import JscadViewer from './components/JscadViewer.vue'
 import MaterialLibrary from './components/MaterialLibrary.vue'
+import GlobalSettings from './components/GlobalSettings.vue'
 import { materialLibrary } from './assets/materials.js'
 
 export default {
@@ -50,15 +58,17 @@ export default {
     LayerControls,
     SliceControls,
     JscadViewer,
-    MaterialLibrary
+    MaterialLibrary,
+    GlobalSettings
   },
   data() {
     return {
       layers: [
         { 
           id: 1, 
-          outerRadius: 8, 
-          thickness: 5, 
+          normalizedRadius: 0.3, // Нормированный радиус (доля от общего)
+          physicalRadius: 0, // Будет вычисляться автоматически
+          thickness: 0, // Теперь thickness не нужен, вычисляется из normalizedRadius
           color: materialLibrary[0].color,
           magneticPermeability: materialLibrary[0].magneticPermeability,
           dielectricConstant: materialLibrary[0].dielectricConstant,
@@ -67,8 +77,9 @@ export default {
         },
         { 
           id: 2, 
-          outerRadius: 10, 
-          thickness: 5, 
+          normalizedRadius: 0.6,
+          physicalRadius: 0,
+          thickness: 0,
           color: materialLibrary[1].color,
           magneticPermeability: materialLibrary[1].magneticPermeability,
           dielectricConstant: materialLibrary[1].dielectricConstant,
@@ -77,8 +88,9 @@ export default {
         },
         { 
           id: 3, 
-          outerRadius: 12, 
-          thickness: 5, 
+          normalizedRadius: 1.0, // Последний слой = полный радиус линзы
+          physicalRadius: 0,
+          thickness: 0,
           color: materialLibrary[2].color,
           magneticPermeability: materialLibrary[2].magneticPermeability,
           dielectricConstant: materialLibrary[2].dielectricConstant,
@@ -88,20 +100,46 @@ export default {
       ],
       slicePosition: 180,
       sliceEnabled: true,
-      materialLibrary: [...materialLibrary]
+      materialLibrary: [...materialLibrary],
+      lensRadiusCoeff: 6 // k₀ = 6π (по умолчанию как в вашем коде)
     }
   },
   methods: {
+    updateLensRadius(newCoeff) {
+      this.lensRadiusCoeff = newCoeff
+      this.updatePhysicalRadii()
+    },
+
+    updatePhysicalRadii() {
+      // Вычисляем физические радиусы на основе нормированных и общего радиуса линзы
+      const k0 = this.lensRadiusCoeff * Math.PI
+      
+      // Сортируем слои по нормированному радиусу
+      const sortedLayers = [...this.layers].sort((a, b) => a.normalizedRadius - b.normalizedRadius)
+      
+      // Обновляем физические радиусы
+      sortedLayers.forEach(layer => {
+        layer.physicalRadius = layer.normalizedRadius * k0
+      })
+      
+      // Обновляем outerRadius для визуализации
+      this.updateLayerRadii()
+    },
+
     addLayer() {
       const newId = Math.max(...this.layers.map(l => l.id), 0) + 1
-      const newOuterRadius = this.layers.length > 0 
-        ? this.layers[this.layers.length - 1].outerRadius + 2 
-        : 10
+      
+      // Находим максимальный нормированный радиус
+      const maxNormalizedRadius = Math.max(...this.layers.map(l => l.normalizedRadius))
+      
+      // Новый слой с немного большим нормированным радиусом
+      const newNormalizedRadius = maxNormalizedRadius + 0.1
 
       this.layers.push({
         id: newId,
-        outerRadius: newOuterRadius,
-        thickness: 2,
+        normalizedRadius: newNormalizedRadius,
+        physicalRadius: 0,
+        thickness: 0,
         color: [Math.random(), Math.random(), Math.random()],
         magneticPermeability: 1.0,
         dielectricConstant: 1.0,
@@ -109,36 +147,30 @@ export default {
         visible: true
       })
 
-      this.updateLayerRadii()
+      this.updatePhysicalRadii()
     },
 
     removeLayer(layerId) {
       if (this.layers.length <= 1) return
       this.layers = this.layers.filter(layer => layer.id !== layerId)
-      this.updateLayerRadii()
+      this.updatePhysicalRadii()
     },
 
     updateLayer(updatedLayer) {
       const index = this.layers.findIndex(l => l.id === updatedLayer.id)
       if (index !== -1) {
         this.layers[index] = { ...updatedLayer }
-        this.updateLayerRadii()
+        this.updatePhysicalRadii()
       }
     },
 
     updateLayerRadii() {
-      for (let i = 0; i < this.layers.length; i++) {
-        if (i === 0) {
-          this.layers[i].outerRadius = Math.max(0.1, this.layers[i].thickness)
-        } else {
-          this.layers[i].outerRadius = Math.max(
-            this.layers[i-1].outerRadius + 0.1, 
-            this.layers[i-1].outerRadius + this.layers[i].thickness
-          )
-        }
-        
-        this.layers[i].outerRadius = Math.min(this.layers[i].outerRadius, 1000)
-        this.layers[i].thickness = Math.min(this.layers[i].thickness, 1000)
+      // Обновляем outerRadius для визуализации (используем физические радиусы)
+      const sortedLayers = [...this.layers].sort((a, b) => a.normalizedRadius - b.normalizedRadius)
+      
+      for (let i = 0; i < sortedLayers.length; i++) {
+        // Масштабируем для лучшей визуализации
+        sortedLayers[i].outerRadius = sortedLayers[i].physicalRadius * 2
       }
     },
 
@@ -191,7 +223,7 @@ export default {
   },
 
   mounted() {
-    this.updateLayerRadii()
+    this.updatePhysicalRadii()
   }
 }
 </script>
