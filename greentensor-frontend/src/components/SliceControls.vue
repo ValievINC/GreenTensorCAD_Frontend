@@ -25,6 +25,10 @@
         >
       </label>
     </div>
+
+    <button type="button" class="calculate-button" @click="handleCalculateClick">
+      Рассчитать диаграмму (API)
+    </button>
   </div>
 </template>
 
@@ -54,6 +58,10 @@ export default {
         position: Number(event.target.value),
         enabled: this.sliceEnabled
       })
+    },
+
+    handleCalculateClick() {
+      this.$emit('calculate-lens')
     }
   }
 }
@@ -104,5 +112,29 @@ input[type="checkbox"] {
   margin: 0;
   width: 16px;
   height: 16px;
+}
+
+.calculate-button {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #3498db;
+  background: #3498db;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+}
+
+.calculate-button:hover {
+  background: #2980b9;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.calculate-button:active {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 </style>
