@@ -6,7 +6,7 @@
     
     <div class="settings-grid">
       <label class="form-group">
-        <span class="form-label">Радиус линзы (коэффициент × π):</span>
+        <span class="form-label">Радиус линзы (коэффициент):</span>
         <input
             type="number"
             v-model.number="localLensRadiusCoeff"
@@ -17,7 +17,7 @@
             class="form-input"
         >
         <div class="form-hint">
-          k₀ = {{ localLensRadiusCoeff }}π ≈ {{ (localLensRadiusCoeff * Math.PI).toFixed(3) }}
+          k₀ = {{ localLensRadiusCoeff }} ≈ {{ (localLensRadiusCoeff).toFixed(3) }}
         </div>
       </label>
     </div>
@@ -45,12 +45,12 @@ export default {
   },
   methods: {
     updateLensRadius() {
-      let value = parseInt(this.localLensRadiusCoeff)
+      let value = parseFloat(this.localLensRadiusCoeff)
       
       if (isNaN(value)) {
         value = 6
-      } else if (value < 1) {
-        value = 1
+      } else if (value < 0) {
+        value = 0
       } else if (value > 100) {
         value = 100
       }

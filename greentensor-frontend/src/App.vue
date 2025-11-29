@@ -29,21 +29,22 @@
             :slicePosition="slicePosition"
             :sliceEnabled="sliceEnabled"
             @update-slice="updateSlice"
-            @calculate-lens="runLensCalculation"
         />
-
-        <div class="api-status" v-if="apiLoading || apiError || apiStatus">
-          <p v-if="apiLoading">Выполняется расчет на сервере…</p>
-          <p v-if="apiStatus && !apiLoading" class="api-status-success">{{ apiStatus }}</p>
-          <p v-if="apiError && !apiLoading" class="api-status-error">Ошибка API: {{ apiError }}</p>
-        </div>
       </div>
 
       <div class="viewer-panel">
-        <JscadViewer
+        <div class="viewer-main">
+          <JscadViewer
+              :layers="layers"
+              :slicePosition="slicePosition"
+              :sliceEnabled="sliceEnabled"
+              :lensRadiusCoeff="lensRadiusCoeff"
+          />
+        </div>
+
+        <AnalysisPanel
+            class="analysis-panel"
             :layers="layers"
-            :slicePosition="slicePosition"
-            :sliceEnabled="sliceEnabled"
             :lensRadiusCoeff="lensRadiusCoeff"
         />
       </div>
@@ -55,6 +56,7 @@
 import LayerControls from './components/LayerControls.vue'
 import SliceControls from './components/SliceControls.vue'
 import JscadViewer from './components/JscadViewer.vue'
+import AnalysisPanel from './components/AnalysisPanel.vue'
 import MaterialLibrary from './components/MaterialLibrary.vue'
 import GlobalSettings from './components/GlobalSettings.vue'
 import { materialLibrary } from './assets/materials.js'
@@ -66,7 +68,8 @@ export default {
     SliceControls,
     JscadViewer,
     MaterialLibrary,
-    GlobalSettings
+    GlobalSettings,
+    AnalysisPanel
   },
   data() {
     return {
@@ -108,11 +111,7 @@ export default {
       slicePosition: 180,
       sliceEnabled: true,
       materialLibrary: [...materialLibrary],
-      // k₀ = lensRadiusCoeff × π (по умолчанию 6π как в вашем коде)
-      lensRadiusCoeff: 6,
-      apiLoading: false,
-      apiError: null,
-      apiStatus: ''
+      lensRadiusCoeff: 6 // k₀ = 6π (по умолчанию как в вашем коде)
     }
   },
   methods: {
@@ -230,68 +229,6 @@ export default {
         layer.dielectricConstant = material.dielectricConstant
         layer.materialId = material.id
       })
-    },
-
-    buildLensConfig() {
-      const k0 = this.lensRadiusCoeff * Math.PI
-
-      const radii = this.layers.map(layer => layer.physicalRadius)
-      const dielectricConstants = this.layers.map(layer => layer.dielectricConstant)
-      const magneticPermeabilities = this.layers.map(layer => layer.magneticPermeability)
-
-      return {
-        wave_number: k0,
-        series_terms: 50, // Количество членов ряда (можно вынести в настройки)
-        layers_count: this.layers.length,
-        azimuth_angle: (this.slicePosition || 0) * Math.PI / 180, // Переводим угол среза в радианы
-        radii,
-        dielectric_constants: dielectricConstants,
-        magnetic_permeabilities: magneticPermeabilities,
-        alternative_wave_number: null
-      }
-    },
-
-    async runLensCalculation() {
-      this.apiError = null
-      this.apiStatus = ''
-      this.apiLoading = true
-
-      try {
-        const lensConfig = this.buildLensConfig()
-
-        const response = await fetch('http://localhost:8000/generate-analysis/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            lens_config: lensConfig,
-            normalize: true
-          })
-        })
-
-        if (!response.ok) {
-          const errorText = await response.text()
-          throw new Error(errorText || `Ошибка HTTP ${response.status}`)
-        }
-
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = 'lens_analysis.zip'
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        window.URL.revokeObjectURL(url)
-
-        this.apiStatus = 'Расчет успешно выполнен. Файл lens_analysis.zip скачан.'
-      } catch (error) {
-        console.error('API error:', error)
-        this.apiError = error.message || 'Неизвестная ошибка при обращении к API.'
-      } finally {
-        this.apiLoading = false
-      }
     }
   },
 
@@ -336,8 +273,22 @@ body {
 
 .viewer-panel {
   flex: 1;
+  display: flex;
+  gap: 16px;
   background: #f8f9fa;
   border-left: 1px solid #e9ecef;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.viewer-main {
+  flex: 2;
+  min-width: 0;
+}
+
+.analysis-panel {
+  flex: 1;
+  max-width: 380px;
 }
 
 h1 {
@@ -365,18 +316,5 @@ h1 {
 
 .controls-panel::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
-}
-
-.api-status {
-  margin-top: 10px;
-  font-size: 13px;
-}
-
-.api-status-success {
-  color: #2e7d32;
-}
-
-.api-status-error {
-  color: #c62828;
 }
 </style>
