@@ -6,7 +6,9 @@
 
         <GlobalSettings
             :lensRadiusCoeff="lensRadiusCoeff"
+            :usesPiMultiplier="usesPiMultiplier"
             @update-lens-radius="updateLensRadius"
+            @update-pi-multiplier="updatePiMultiplier"
         />
 
         <MaterialLibrary
@@ -19,7 +21,7 @@
         <LayerControls
             :layers="layers"
             :materials="materialLibrary"
-            :lensRadiusCoeff="lensRadiusCoeff"
+            :lensRadiusCoeff="effectiveWaveNumber"
             @add-layer="addLayer"
             @remove-layer="removeLayer"
             @update-layer="updateLayer"
@@ -38,7 +40,7 @@
               :layers="layers"
               :slicePosition="slicePosition"
               :sliceEnabled="sliceEnabled"
-              :lensRadiusCoeff="lensRadiusCoeff"
+              :lensRadiusCoeff="effectiveWaveNumber"
           />
         </div>
 
@@ -46,6 +48,7 @@
             class="analysis-panel"
             :layers="layers"
             :lensRadiusCoeff="lensRadiusCoeff"
+            :usesPiMultiplier="usesPiMultiplier"
         />
       </div>
     </div>
@@ -76,9 +79,9 @@ export default {
       layers: [
         { 
           id: 1, 
-          normalizedRadius: 0.3, // Нормированный радиус (доля от общего)
-          physicalRadius: 0, // Будет вычисляться автоматически
-          thickness: 0, // Теперь thickness не нужен, вычисляется из normalizedRadius
+          normalizedRadius: 0.3,
+          physicalRadius: 0,
+          thickness: 0,
           color: materialLibrary[0].color,
           magneticPermeability: materialLibrary[0].magneticPermeability,
           dielectricConstant: materialLibrary[0].dielectricConstant,
@@ -98,7 +101,7 @@ export default {
         },
         { 
           id: 3, 
-          normalizedRadius: 1.0, // Последний слой = полный радиус линзы
+          normalizedRadius: 1.0,
           physicalRadius: 0,
           thickness: 0,
           color: materialLibrary[2].color,
@@ -111,7 +114,16 @@ export default {
       slicePosition: 180,
       sliceEnabled: true,
       materialLibrary: [...materialLibrary],
-      lensRadiusCoeff: 6 // k₀ = 6π (по умолчанию как в вашем коде)
+      lensRadiusCoeff: 6, // Базовое значение
+      usesPiMultiplier: true // Умножать ли на π
+    }
+  },
+  computed: {
+    effectiveWaveNumber() {
+      // Вычисляем реальное волновое число с учётом множителя π
+      return this.usesPiMultiplier 
+        ? this.lensRadiusCoeff * Math.PI 
+        : this.lensRadiusCoeff
     }
   },
   methods: {
@@ -120,29 +132,29 @@ export default {
       this.updatePhysicalRadii()
     },
 
+    updatePiMultiplier(usePi) {
+      this.usesPiMultiplier = usePi
+      this.updatePhysicalRadii()
+    },
+
     updatePhysicalRadii() {
-      // Вычисляем физические радиусы на основе нормированных и общего радиуса линзы
-      const k0 = this.lensRadiusCoeff * Math.PI
+      // Вычисляем физические радиусы на основе нормированных и эффективного волнового числа
+      const k0 = this.effectiveWaveNumber
       
-      // Сортируем слои по нормированному радиусу
       const sortedLayers = [...this.layers].sort((a, b) => a.normalizedRadius - b.normalizedRadius)
       
-      // Обновляем физические радиусы
       sortedLayers.forEach(layer => {
         layer.physicalRadius = layer.normalizedRadius * k0
       })
       
-      // Обновляем outerRadius для визуализации
       this.updateLayerRadii()
     },
 
     addLayer() {
       const newId = Math.max(...this.layers.map(l => l.id), 0) + 1
       
-      // Находим максимальный нормированный радиус
       const maxNormalizedRadius = Math.max(...this.layers.map(l => l.normalizedRadius))
       
-      // Новый слой с немного большим нормированным радиусом
       const newNormalizedRadius = maxNormalizedRadius + 0.1
 
       this.layers.push({
@@ -175,11 +187,9 @@ export default {
     },
 
     updateLayerRadii() {
-      // Обновляем outerRadius для визуализации (используем физические радиусы)
       const sortedLayers = [...this.layers].sort((a, b) => a.normalizedRadius - b.normalizedRadius)
       
       for (let i = 0; i < sortedLayers.length; i++) {
-        // Масштабируем для лучшей визуализации
         sortedLayers[i].outerRadius = sortedLayers[i].physicalRadius * 2
       }
     },

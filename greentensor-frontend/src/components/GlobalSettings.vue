@@ -6,7 +6,7 @@
     
     <div class="settings-grid">
       <label class="form-group">
-        <span class="form-label">Радиус линзы (коэффициент):</span>
+        <span class="form-label">Волновое число (k₀):</span>
         <input
             type="text"
             v-model="inputValue"
@@ -15,8 +15,24 @@
             class="form-input"
             placeholder="Введите число"
         >
-        <div class="form-hint">
-          k₀ = {{ displayValue }} ≈ {{ numericDisplayValue }}
+        <div class="form-hint-group">
+          <label class="checkbox-hint">
+            <input
+              type="checkbox"
+              v-model="multiplyByPi"
+              @change="handleMultiplyChange"
+              class="checkbox-input-small"
+            >
+            <span>Умножить на π</span>
+          </label>
+          <div class="form-hint">
+            <template v-if="multiplyByPi">
+              k₀ = {{ displayValue }} × π ≈ {{ (displayValue * Math.PI).toFixed(3) }}
+            </template>
+            <template v-else>
+              k₀ = {{ displayValue }}
+            </template>
+          </div>
         </div>
       </label>
     </div>
@@ -30,20 +46,23 @@ export default {
     lensRadiusCoeff: {
       type: Number,
       required: true
+    },
+    usesPiMultiplier: {
+      type: Boolean,
+      default: true
     }
   },
   data() {
     return {
       inputValue: String(this.lensRadiusCoeff),
-      localValue: this.lensRadiusCoeff
+      localValue: this.lensRadiusCoeff,
+      multiplyByPi: this.usesPiMultiplier,
+      Math: Math
     }
   },
   computed: {
     displayValue() {
       return this.localValue
-    },
-    numericDisplayValue() {
-      return this.localValue.toFixed(3)
     }
   },
   watch: {
@@ -53,6 +72,9 @@ export default {
       if (document.activeElement !== this.$el?.querySelector('input')) {
         this.inputValue = String(newVal)
       }
+    },
+    usesPiMultiplier(newVal) {
+      this.multiplyByPi = newVal
     }
   },
   methods: {
@@ -70,7 +92,16 @@ export default {
       // Обновляем значение без ограничений
       this.localValue = parsed
       this.inputValue = String(parsed)
-      this.$emit('update-lens-radius', parsed)
+      this.emitUpdate()
+    },
+    
+    handleMultiplyChange() {
+      this.$emit('update-pi-multiplier', this.multiplyByPi)
+      this.emitUpdate()
+    },
+    
+    emitUpdate() {
+      this.$emit('update-lens-radius', this.localValue)
     }
   }
 }
@@ -118,10 +149,37 @@ export default {
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
+.form-hint-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkbox-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #495057;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-input-small {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  margin: 0;
+}
+
 .form-hint {
   font-size: 12px;
   color: #6c757d;
   font-family: 'Courier New', monospace;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
 }
 
 .component-section {

@@ -134,6 +134,10 @@ export default {
     lensRadiusCoeff: {
       type: Number,
       required: true
+    },
+    usesPiMultiplier: {
+      type: Boolean,
+      default: true
     }
   },
 
@@ -166,6 +170,11 @@ export default {
         .slice()
         .sort((a, b) => (a.physicalRadius || 0) - (b.physicalRadius || 0))
     },
+    effectiveWaveNumber() {
+      return this.usesPiMultiplier 
+        ? this.lensRadiusCoeff * Math.PI 
+        : this.lensRadiusCoeff
+    },
     apiLensConfig() {
       const radii = this.visibleLayers.map(l => Number(l.physicalRadius || 0))
       const dielectric_constants = this.visibleLayers.map(l =>
@@ -176,7 +185,7 @@ export default {
       )
 
       return {
-        wave_number: this.lensRadiusCoeff * Math.PI,
+        wave_number: this.effectiveWaveNumber,
         series_terms: this.seriesTerms,
         layers_count: this.visibleLayers.length,
         azimuth_angle: this.azimuthAngleRad,
