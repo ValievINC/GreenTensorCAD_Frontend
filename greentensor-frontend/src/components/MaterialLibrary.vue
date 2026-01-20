@@ -77,22 +77,24 @@
           <div class="form-group">
             <label class="form-label">Магнитная проницаемость:</label>
             <input 
-              v-model.number="currentMaterial.magneticPermeability" 
-              type="number" 
-              step="0.001" 
-              min="0.1"
+              v-model="magneticPermeabilityInput" 
+              type="text" 
               class="form-input"
+              placeholder="Введите значение"
+              @blur="handleMagneticPermeabilityBlur"
+              @keydown.enter="handleMagneticPermeabilityBlur"
             >
           </div>
 
           <div class="form-group">
             <label class="form-label">Диэлектрическая проницаемость:</label>
             <input 
-              v-model.number="currentMaterial.dielectricConstant" 
-              type="number" 
-              step="0.001" 
-              min="0.1"
+              v-model="dielectricConstantInput" 
+              type="text" 
               class="form-input"
+              placeholder="Введите значение"
+              @blur="handleDielectricConstantBlur"
+              @keydown.enter="handleDielectricConstantBlur"
             >
           </div>
 
@@ -144,7 +146,9 @@ export default {
         dielectricConstant: 1.0,
         colorHex: '#808080',
         description: ''
-      }
+      },
+      magneticPermeabilityInput: '1.0',
+      dielectricConstantInput: '1.0'
     }
   },
   computed: {
@@ -166,6 +170,32 @@ export default {
       return material.color || '#808080'
     },
 
+    handleMagneticPermeabilityBlur() {
+      const normalizedValue = this.magneticPermeabilityInput.replace(',', '.')
+      const parsed = parseFloat(normalizedValue)
+      
+      if (isNaN(parsed) || parsed <= 0) {
+        this.magneticPermeabilityInput = String(this.currentMaterial.magneticPermeability)
+        return
+      }
+      
+      this.currentMaterial.magneticPermeability = parsed
+      this.magneticPermeabilityInput = String(parsed)
+    },
+
+    handleDielectricConstantBlur() {
+      const normalizedValue = this.dielectricConstantInput.replace(',', '.')
+      const parsed = parseFloat(normalizedValue)
+      
+      if (isNaN(parsed) || parsed <= 0) {
+        this.dielectricConstantInput = String(this.currentMaterial.dielectricConstant)
+        return
+      }
+      
+      this.currentMaterial.dielectricConstant = parsed
+      this.dielectricConstantInput = String(parsed)
+    },
+
     editMaterial(material) {
       this.currentMaterial = {
         id: material.id,
@@ -175,6 +205,8 @@ export default {
         colorHex: this.rgbToHex(material.color),
         description: material.description || ''
       }
+      this.magneticPermeabilityInput = String(material.magneticPermeability)
+      this.dielectricConstantInput = String(material.dielectricConstant)
       this.showEditModal = true
     },
 
@@ -221,6 +253,8 @@ export default {
         colorHex: '#808080',
         description: ''
       }
+      this.magneticPermeabilityInput = '1.0'
+      this.dielectricConstantInput = '1.0'
     },
 
     hexToRgb(hex) {
@@ -238,6 +272,14 @@ export default {
         return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`
       }
       return rgb || '#808080'
+    }
+  },
+  watch: {
+    showAddModal(newVal) {
+      if (newVal) {
+        this.magneticPermeabilityInput = '1.0'
+        this.dielectricConstantInput = '1.0'
+      }
     }
   }
 }
@@ -309,5 +351,39 @@ export default {
   margin: 0 0 12px 0;
   line-height: 1.4;
   font-style: italic;
+}
+
+.form-input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.color-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.color-picker {
+  width: 50px;
+  height: 35px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.color-value {
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 </style>

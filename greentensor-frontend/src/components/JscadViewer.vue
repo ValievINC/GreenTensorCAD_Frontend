@@ -33,6 +33,7 @@ export default {
     let controls = null
     let animationId = null
     const meshes = []
+    const sliceFaces = [] // Отдельный массив для slice faces
     let clippingPlane = null
     let gridHelper = null
     let axesHelper = null
@@ -81,13 +82,13 @@ export default {
       controls.screenSpacePanning = false
 
       // Мягкое освещение, чтоб неосвещенная сторона не была супертёмной
-      const ambientLight = new THREE.AmbientLight(0x404040, 10) // Уменьшенная интенсивность
+      const ambientLight = new THREE.AmbientLight(0x404040, 10)
       scene.add(ambientLight)
 
       // Основной направленный свет
       const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3)
       directionalLight.position.set(1, 1, 1)
-      directionalLight.intensity = 1 // Уменьшенная интенсивность
+      directionalLight.intensity = 1
       scene.add(directionalLight)
 
       clippingPlane = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0)
@@ -104,21 +105,19 @@ export default {
       gridHelper = new THREE.GridHelper(gridSize, divisions)
       axesHelper = new THREE.AxesHelper(axesSize)
 
-      // Более мягкая сетка
-      gridHelper.material.opacity = 0.15 // Еще более прозрачная
+      gridHelper.material.opacity = 0.15
       gridHelper.material.transparent = true
       gridHelper.material.depthWrite = false
-      gridHelper.material.color = new THREE.Color(0x6c757d) // Более светлый серый
+      gridHelper.material.color = new THREE.Color(0x6c757d)
 
       axesHelper.material.depthWrite = false
       axesHelper.material.depthTest = true
-      axesHelper.material.linewidth = 1.5 // Тоньше линии
+      axesHelper.material.linewidth = 1.5
       
-      // Приглушенные цвета осей
       const axesColors = [
-        new THREE.Color(0xcc3333), // Приглушенный красный
-        new THREE.Color(0x33cc33), // Приглушенный зеленый
-        new THREE.Color(0x3333cc)  // Приглушенный синий
+        new THREE.Color(0xcc3333),
+        new THREE.Color(0x33cc33),
+        new THREE.Color(0x3333cc)
       ]
       
       axesHelper.setColors(axesColors[0], axesColors[1], axesColors[2])
@@ -130,8 +129,6 @@ export default {
       axesHelper.renderOrder = 1000
     }
 
-    // Обновление камеры при увеличении/уменьшении радиуса
-    // чисто для того, чтобы камера внутрь сферы не улетала, когда увеличивается радиус
     const updateCameraPosition = (maxRadius) => {
       if (!camera || !controls) return
       
@@ -169,9 +166,23 @@ export default {
       clippingPlane.constant = 0
     }
 
-    // В графике есть такая проблема, что когда мы делаем срез какого-то объекта, то обнаруживаем,
-    // что он полый внутри. Поэтому, чтобы исправить это недоразумение и сделать иллюзию того,
-    // что сферы сплошные, мы на месте среза делаем кольца, обозначающие слои.
+    // Обновление ориентации всех slice faces
+    const updateSliceFacesOrientation = () => {
+      const angle = THREE.MathUtils.degToRad(props.slicePosition)
+      const normal = new THREE.Vector3(
+        Math.cos(angle),
+        Math.sin(angle),
+        0
+      )
+
+      sliceFaces.forEach(face => {
+        face.quaternion.setFromUnitVectors(
+          new THREE.Vector3(0, 0, 1),
+          normal
+        )
+      })
+    }
+
     const createRingGeometry = (outerRadius, innerRadius) => {
       const outerCircle = new THREE.Shape()
       outerCircle.moveTo(outerRadius, 0)
@@ -188,7 +199,6 @@ export default {
       return geometry
     }
 
-    // Здесь мы используем вышеописанный метод для формирования цельной плоскости среза
     const createSliceFace = (outerRadius, innerRadius, color) => {
       const geometry = createRingGeometry(outerRadius, innerRadius)
       const material = new THREE.MeshPhongMaterial({
@@ -197,12 +207,15 @@ export default {
         clippingPlanes: [],
         depthWrite: true,
         depthTest: true,
-        shininess: 30, // Уменьшенный блеск
-        specular: new THREE.Color(0x222222) // Темные блики
+        transparent: false,
+        opacity: 1.0,
+        shininess: 30,
+        specular: new THREE.Color(0x222222)
       })
 
       const mesh = new THREE.Mesh(geometry, material)
 
+      // Устанавливаем начальную ориентацию
       const angle = THREE.MathUtils.degToRad(props.slicePosition)
       const normal = new THREE.Vector3(
         Math.cos(angle),
@@ -216,6 +229,48 @@ export default {
       )
 
       return mesh
+    }
+
+    // Очистка всех slice faces
+    const clearSliceFaces = () => {
+      sliceFaces.forEach(face => {
+        scene.remove(face)
+        if (face.geometry) face.geometry.dispose()
+        if (face.material) face.material.dispose()
+      })
+      sliceFaces.length = 0
+    }
+
+    // Создание slice faces
+    const createSliceFaces = () => {
+      clearSliceFaces()
+
+      if (!props.sliceEnabled) return
+
+      const layersWithRadii = props.layers
+        .filter(layer => layer.visible)
+        .sort((a, b) => a.normalizedRadius - b.normalizedRadius)
+        .map(layer => {
+          return {
+            ...layer,
+            outerRadius: layer.physicalRadius * 2
+          }
+        })
+
+      const allLayers = [...layersWithRadii].sort((a, b) => a.outerRadius - b.outerRadius)
+      
+      for (let i = allLayers.length - 1; i >= 0; i--) {
+        const layer = allLayers[i]
+        const innerRadius = i > 0 ? allLayers[i - 1].outerRadius : 0
+        
+        if (innerRadius >= layer.outerRadius) continue
+
+        const face = createSliceFace(layer.outerRadius, innerRadius, layer.color)
+        face.material.visible = layer.visible
+
+        scene.add(face)
+        sliceFaces.push(face)
+      }
     }
 
     // Создание/обновление самих сфер 
@@ -239,7 +294,7 @@ export default {
         .map(layer => {
           return {
             ...layer,
-            outerRadius: layer.physicalRadius * 2 // Масштабируем для визуализации
+            outerRadius: layer.physicalRadius * 2
           }
         })
 
@@ -283,8 +338,8 @@ export default {
             transparent: false,
             opacity: 1.0,
             visible: layer.visible,
-            shininess: 40, // Умеренный блеск
-            specular: new THREE.Color(0x333333) // Темные блики вместо белых
+            shininess: 40,
+            specular: new THREE.Color(0x333333)
           })
 
           const sphere = new THREE.Mesh(geometry, material)
@@ -326,25 +381,8 @@ export default {
         }
       })
 
-      if (props.sliceEnabled) {
-        for (let i = allLayers.length - 1; i >= 0; i--) {
-          const layer = allLayers[i]
-          const innerRadius = i > 0 ? allLayers[i - 1].outerRadius : 0
-          
-          if (innerRadius >= layer.outerRadius) continue
-
-          const face = createSliceFace(layer.outerRadius, innerRadius, layer.color)
-          
-          face.material.transparent = false
-          face.material.opacity = 1.0
-          face.material.visible = layer.visible
-
-          scene.add(face)
-          meshes.push(face)
-        }
-      }
-
       updateClippingPlane()
+      createSliceFaces()
     }
 
     const animate = () => {
@@ -393,6 +431,7 @@ export default {
           }
         }
       })
+      clearSliceFaces()
       window.removeEventListener('resize', handleResize)
     })
 
@@ -402,7 +441,8 @@ export default {
 
     watch(() => [props.slicePosition, props.sliceEnabled], () => {
       updateClippingPlane()
-
+      
+      // Обновляем clipping planes для всех sphere meshes
       meshes.forEach(mesh => {
         if (mesh.material && Array.isArray(mesh.material.clippingPlanes)) {
           mesh.material.clippingPlanes = props.sliceEnabled ? [clippingPlane] : []
@@ -410,38 +450,25 @@ export default {
         }
       })
 
+      // Обновляем или пересоздаём slice faces
       if (props.sliceEnabled) {
-        const sliceFaces = meshes.filter(mesh => mesh.geometry && mesh.geometry.type === 'ShapeGeometry')
-        sliceFaces.forEach(face => scene.remove(face))
-        
-        const layersWithRadii = props.layers.map((layer, index) => {
-          let outerRadius = 0
-          for (let i = 0; i <= index; i++) {
-            outerRadius += props.layers[i].thickness || 1
-          }
-          return {
-            ...layer,
-            outerRadius: outerRadius
-          }
-        })
-
-        const allLayers = [...layersWithRadii].sort((a, b) => a.outerRadius - b.outerRadius)
-        
-        for (let i = allLayers.length - 1; i >= 0; i--) {
-          const layer = allLayers[i]
-          const innerRadius = i > 0 ? allLayers[i - 1].outerRadius : 0
-          
-          if (innerRadius >= layer.outerRadius) continue
-
-          const face = createSliceFace(layer.outerRadius, innerRadius, layer.color)
-          
-          face.material.transparent = false
-          face.material.opacity = 1.0
-          face.material.visible = layer.visible
-
-          scene.add(face)
-          meshes.push(face)
+        // Если faces уже существуют, просто обновляем их ориентацию
+        if (sliceFaces.length > 0) {
+          updateSliceFacesOrientation()
+        } else {
+          // Иначе создаём заново
+          createSliceFaces()
         }
+        
+        // Обновляем видимость
+        sliceFaces.forEach(face => {
+          face.visible = true
+        })
+      } else {
+        // Скрываем faces когда slice отключён
+        sliceFaces.forEach(face => {
+          face.visible = false
+        })
       }
     })
 

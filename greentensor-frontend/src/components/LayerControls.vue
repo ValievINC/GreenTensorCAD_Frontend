@@ -30,23 +30,42 @@
               <span class="form-label">Видимость</span>
             </label>
 
-            <!-- Нормированный радиус -->
-            <label class="form-group">
-              <span class="form-label">Нормированный радиус:</span>
-              <input
-                  type="number"
-                  v-model.number="layer.normalizedRadius"
-                  min="0.01"
-                  max="10"
-                  step="0.01"
-                  @input="updateLayerWithValidation(layer, $event, 'normalizedRadius')"
-                  class="form-input"
-              >
-              <div class="form-hint">
-                Физ. радиус: {{ calculatePhysicalRadius(layer).toFixed(3) }} мм
-                ({{ (layer.normalizedRadius * 100).toFixed(1) }}% от линзы)
+            <!-- Радиус с выбором типа -->
+            <div class="form-group grid-full-width">
+              <div class="radius-controls">
+                <div class="radius-input-group">
+                  <label class="form-label">Радиус слоя:</label>
+                  <div class="radius-input-wrapper">
+                    <input
+                        type="text"
+                        :value="getRadiusInputValue(layer)"
+                        @blur="handleRadiusBlur(layer, $event)"
+                        @keydown.enter="handleRadiusBlur(layer, $event)"
+                        class="form-input"
+                        placeholder="Введите значение"
+                    >
+                    <select 
+                      v-model="layer.radiusType" 
+                      @change="handleRadiusTypeChange(layer)"
+                      class="radius-type-select"
+                    >
+                      <option value="normalized">Норм.</option>
+                      <option value="physical">Физ. (мм)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-hint">
+                  <template v-if="layer.radiusType === 'normalized'">
+                    Физ. радиус: {{ calculatePhysicalRadius(layer).toFixed(3) }} мм
+                    ({{ (layer.normalizedRadius * 100).toFixed(1) }}% от линзы)
+                  </template>
+                  <template v-else>
+                    Норм. радиус: {{ layer.normalizedRadius.toFixed(3) }}
+                    ({{ (layer.normalizedRadius * 100).toFixed(1) }}% от линзы)
+                  </template>
+                </div>
               </div>
-            </label>
+            </div>
 
             <div class="form-group grid-full-width">
               <label class="form-label">Материал:</label>
@@ -82,28 +101,26 @@
             <label class="form-group">
               <span class="form-label">Магнитная проницаемость:</span>
               <input
-                  type="number"
-                  v-model.number="layer.magneticPermeability"
-                  min="0.1"
-                  max="1000"
-                  step="0.1"
-                  @input="updateLayerWithValidation(layer, $event, 'magneticPermeability')"
+                  type="text"
+                  :value="getMagneticPermeabilityInput(layer)"
+                  @blur="handleMagneticPermeabilityBlur(layer, $event)"
+                  @keydown.enter="handleMagneticPermeabilityBlur(layer, $event)"
                   class="form-input"
                   :class="{ 'auto-applied': layer.autoAppliedProperties?.magneticPermeability }"
+                  placeholder="Введите значение"
               >
             </label>
 
             <label class="form-group">
               <span class="form-label">Диэлектрическая проницаемость:</span>
               <input
-                  type="number"
-                  v-model.number="layer.dielectricConstant"
-                  min="0.1"
-                  max="1000"
-                  step="0.1"
-                  @input="updateLayerWithValidation(layer, $event, 'dielectricConstant')"
+                  type="text"
+                  :value="getDielectricConstantInput(layer)"
+                  @blur="handleDielectricConstantBlur(layer, $event)"
+                  @keydown.enter="handleDielectricConstantBlur(layer, $event)"
                   class="form-input"
                   :class="{ 'auto-applied': layer.autoAppliedProperties?.dielectricConstant }"
+                  placeholder="Введите значение"
               >
             </label>
 
@@ -157,6 +174,103 @@ export default {
       return layer.normalizedRadius * k0
     },
 
+    calculateNormalizedRadius(physicalRadius) {
+      const k0 = this.lensRadiusCoeff * Math.PI
+      return physicalRadius / k0
+    },
+
+    getRadiusInputValue(layer) {
+      if (!layer.radiusType) {
+        layer.radiusType = 'normalized'
+      }
+      
+      if (layer.radiusType === 'physical') {
+        return String(this.calculatePhysicalRadius(layer))
+      }
+      return String(layer.normalizedRadius)
+    },
+
+    getMagneticPermeabilityInput(layer) {
+      return String(layer.magneticPermeability || 1.0)
+    },
+
+    getDielectricConstantInput(layer) {
+      return String(layer.dielectricConstant || 1.0)
+    },
+
+    handleRadiusTypeChange(layer) {
+      // Просто переключаем тип отображения, значение не меняется
+      this.updateLayer(layer)
+    },
+
+    handleRadiusBlur(layer, event) {
+      const normalizedValue = event.target.value.replace(',', '.')
+      const parsed = parseFloat(normalizedValue)
+      
+      if (isNaN(parsed) || parsed <= 0) {
+        // Возвращаем текущее значение, если введено некорректное
+        event.target.value = this.getRadiusInputValue(layer)
+        return
+      }
+      
+      if (layer.radiusType === 'physical') {
+        // Если вводим физический радиус, конвертируем в нормализованный
+        layer.normalizedRadius = this.calculateNormalizedRadius(parsed)
+      } else {
+        // Если вводим нормализованный радиус
+        layer.normalizedRadius = parsed
+      }
+      
+      // Обновляем физический радиус на основе нормализованного
+      layer.physicalRadius = this.calculatePhysicalRadius(layer)
+      
+      this.updateLayer(layer)
+    },
+
+    handleMagneticPermeabilityBlur(layer, event) {
+      const normalizedValue = event.target.value.replace(',', '.')
+      const parsed = parseFloat(normalizedValue)
+      
+      if (isNaN(parsed) || parsed <= 0) {
+        event.target.value = String(layer.magneticPermeability)
+        return
+      }
+      
+      const autoAppliedProperties = { ...layer.autoAppliedProperties }
+      if (autoAppliedProperties.magneticPermeability) {
+        delete autoAppliedProperties.magneticPermeability
+      }
+      
+      const updatedLayer = {
+        ...layer,
+        magneticPermeability: parsed,
+        autoAppliedProperties
+      }
+      this.$emit('update-layer', updatedLayer)
+    },
+
+    handleDielectricConstantBlur(layer, event) {
+      const normalizedValue = event.target.value.replace(',', '.')
+      const parsed = parseFloat(normalizedValue)
+      
+      if (isNaN(parsed) || parsed <= 0) {
+        event.target.value = String(layer.dielectricConstant)
+        return
+      }
+      
+      const autoAppliedProperties = { ...layer.autoAppliedProperties }
+      if (autoAppliedProperties.dielectricConstant) {
+        delete autoAppliedProperties.dielectricConstant
+      }
+      
+      const updatedLayer = {
+        ...layer,
+        dielectricConstant: parsed,
+        autoAppliedProperties
+      }
+      this.$emit('update-layer', updatedLayer)
+    },
+
     getSelectedMaterial(materialId) {
       const id = Number(materialId);
       return this.materials.find(m => m.id === id);
@@ -197,30 +311,6 @@ export default {
 
     updateLayer(layer) {
       this.$emit('update-layer', { ...layer })
-    },
-
-    updateLayerWithValidation(layer, event, field) {
-      let value = parseFloat(event.target.value);
-      
-      if (isNaN(value)) {
-        value = 0.1;
-      } else if (value < 0.1) {
-        value = 0.1;
-      } else if (value > 1000) {
-        value = 1000;
-      }
-      
-      const autoAppliedProperties = { ...layer.autoAppliedProperties }
-      if (autoAppliedProperties[field]) {
-        delete autoAppliedProperties[field]
-      }
-      
-      const updatedLayer = {
-        ...layer,
-        [field]: value,
-        autoAppliedProperties
-      }
-      this.$emit('update-layer', updatedLayer)
     },
 
     updateColor(layer, event) {
@@ -273,6 +363,43 @@ export default {
   font-weight: 600;
   color: var(--text-primary);
   font-size: 16px;
+}
+
+.radius-controls {
+  width: 100%;
+}
+
+.radius-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.radius-input-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.radius-input-wrapper .form-input {
+  flex: 1;
+}
+
+.radius-type-select {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 13px;
+  background: white;
+  cursor: pointer;
+  min-width: 80px;
+  transition: border-color 0.2s;
+}
+
+.radius-type-select:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
 .material-preview {
@@ -329,6 +456,21 @@ export default {
   box-shadow: 0 0 0 1px var(--success-color);
 }
 
+.form-input {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
 /* Специфические стили для select */
 .form-select optgroup {
   font-weight: 600;
@@ -342,7 +484,20 @@ export default {
 }
 
 .color-picker.full-width {
-  width: 210%;
-  height: 40px; /* Увеличиваем высоту для удобства */
+  width: 100%;
+  height: 40px;
+}
+
+.form-hint {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+  margin-bottom: 4px;
 }
 </style>

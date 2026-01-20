@@ -205,7 +205,8 @@ export default {
           JSON.stringify({
             lens_config: this.apiLensConfig,
             normalize: true,
-            plot_fields: this.plotFields
+            plot_fields: this.plotFields,
+            scattering_mode: this.scatteringMode
           })
         )
 
